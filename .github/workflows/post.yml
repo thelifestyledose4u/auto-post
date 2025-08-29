@@ -18,7 +18,7 @@ jobs:
           python-version: "3.11"
 
       - name: Install dependencies
-        run: pip install requests feedparser g4f
+        run: pip install requirements.txt
 
       - name: Run script
         env:
