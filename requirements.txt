@@ -22,3 +22,4 @@ a2wsgi
 python-dotenv
 ddgs
 python-dotenv
+feedparser
