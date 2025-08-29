@@ -189,7 +189,6 @@ def generate_article(article_url):
                 "3. Add at least 2 authoritative outbound links (Wikipedia, IMDb, official site).\n"
                 "4. No 'image suggestions'.\n"
                 "5. Generate an engaging blog post title.\n"
-                "6. End with a strong call-to-action.\n"
             )
         }],
         web_search=False
