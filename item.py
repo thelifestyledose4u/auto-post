@@ -192,7 +192,7 @@ def generate_article(article_url):
                 "6. End with a strong call-to-action.\n"
             )
         }],
-        web_search=True
+        web_search=False
     )
     return response.choices[0].message.content.strip()
 
