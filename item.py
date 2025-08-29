@@ -97,7 +97,7 @@ def get_source_domain(url):
 
 def format_content(content, image_url=None, source_domain=None):
     lines = [ln.strip() for ln in content.splitlines() if ln.strip()]
-    title = lines[0] if lines else "Untitled Post"
+    title = lines[0].lstrip("# ").strip() if lines else "Untitled Post"
     body_lines = lines[1:]
     formatted_parts = []
     in_list = False
