@@ -1,3 +1,4 @@
+from http import client
 import os
 import random
 import requests
@@ -6,9 +7,9 @@ import base64
 from urllib.parse import urlparse
 from bs4 import BeautifulSoup
 from g4f.client import Client
-# from dotenv import load_dotenv
+from dotenv import load_dotenv
 
-# load_dotenv()
+load_dotenv()
 
 # ---------------- Config ----------------
 RSS_FEEDS = [
@@ -130,7 +131,7 @@ def format_content(content, image_url=None, source_domain=None):
         formatted_parts.append("</ul>")
 
     body_html = "\n".join(formatted_parts)
-
+    image_url = create_image(title)
     if image_url:
         # Try to download image; fallback to direct URL if fails
         local_file = None
@@ -142,7 +143,7 @@ def format_content(content, image_url=None, source_domain=None):
             image_html = f'<img src="{image_url}" alt="Featured Image" />'
 
         credit = source_domain if source_domain else "Original Source"
-        body_html = f"{image_html}\n<p><em>Image credit: {credit}</em></p>\n{body_html}"
+        body_html = f"{image_html}\n\n{body_html}"
 
     return title, body_html
 
@@ -175,25 +176,43 @@ def post_to_blogger(title, body, label, draft=True):
     return resp.json()
 
 # ---------------- AI ----------------
-def generate_article(article_url):
-    client = Client()  # procedural version like your old working code
+def generate_article(getarticle_text):
+    client = Client()
     response = client.chat.completions.create(
         model="gpt-4o-mini",
         messages=[{
-            "role": "user",
+                "role": "user",
             "content": (
-                f"Write a 500-word, unique, SEO-optimized blog article based on this source: {article_url}.\n\n"
-                "Requirements:\n"
-                "1. Must be American English, clear, engaging, active voice.\n"
-                "2. Use <h2>/<h3>, wrap paragraphs in <p>, include lists where needed.\n"
-                "3. Add at least 2 authoritative outbound links (Wikipedia, IMDb, official site).\n"
-                "4. No 'image suggestions'.\n"
-                "5. Generate an engaging blog post title.\n"
+                "You are a professional blog writer.\n\n"
+                f"Here is some source text:\n\n{getarticle_text}\n\n"
+                "Your task:\n"
+                "- Write a **500-word original blog post** based on the ideas and facts from the source text.\n"
+                "- Do **NOT copy any sentences** or wording directly; fully rewrite in your own words.\n"
+                "- Use **American English**, engaging and clear, in an **active voice**.\n"
+                "- Structure with <h2> and <h3> headings.\n"
+                "- Wrap paragraphs in <p> tags.\n"
+                "- Use lists (<ul>/<li>) where relevant.\n"
+                "- Add at least 2 authoritative outbound links (e.g., Wikipedia, IMDb, official websites).\n"
+                "- Do NOT suggest images.\n"
+                "- Create a catchy blog title.\n"
+                "- End with a strong call-to-action that encourages readers to comment, share, or read more."
             )
         }],
         web_search=False
     )
     return response.choices[0].message.content.strip()
+
+def create_image(title):
+    client = Client()
+    response = client.images.generate(
+        model="flux",
+        prompt=f"Featured blog illustration for: {title}",
+        size="1024x1024",
+        response_format="url"
+    )
+
+    image_url = response.data[0].url
+    return image_url
 
 def choose_label(article_text):
     client = Client()
@@ -210,13 +229,44 @@ def choose_label(article_text):
     )
     return response.choices[0].message.content.strip()
 
+def extract_article_text(article_url, max_chars=3000):
+    """
+    Fetch and extract readable text from an article page.
+    Trims to max_chars to avoid huge prompts.
+    """
+    try:
+        resp = requests.get(article_url, headers={"User-Agent": "Mozilla/5.0"}, timeout=10)
+        resp.raise_for_status()
+        soup = BeautifulSoup(resp.text, "html.parser")
+
+        # Remove scripts, styles, ads
+        for tag in soup(["script", "style", "aside", "footer", "header", "nav"]):
+            tag.decompose()
+
+        # Collect paragraph text
+        paragraphs = soup.find_all("p")
+        text = "\n".join(p.get_text(" ", strip=True) for p in paragraphs if p.get_text(strip=True))
+
+        if not text:
+            return None  # nothing extracted
+
+        return text[:max_chars]
+    except Exception as e:
+        print(f"⚠️ Could not extract article text: {e}")
+        return None
+
 # ---------------- Main Flow ----------------
 article_url, image_url = get_random_article()
 if not article_url:
     print("⚠️ No articles found in RSS feeds.")
     exit()
 
-article_text = generate_article(article_url)
+getarticle_text = extract_article_text(article_url)
+if not getarticle_text:
+    print("⚠️ No articles found in RSS feeds.")
+    exit()
+    
+article_text = generate_article(getarticle_text)
 label = choose_label(article_text)
 source_domain = get_source_domain(article_url)
 title, body = format_content(article_text, image_url, source_domain)
