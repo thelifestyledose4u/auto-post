@@ -131,19 +131,12 @@ def format_content(content, image_url=None, source_domain=None):
         formatted_parts.append("</ul>")
 
     body_html = "\n".join(formatted_parts)
-    image_url = create_image(title)
-    if image_url:
-        # Try to download image; fallback to direct URL if fails
-        local_file = None
-        try:
-            local_file = download_image(image_url)
-            image_html = embed_image_base64(local_file)
-        except Exception as e:
-            print(f"⚠️ Could not download image ({e}), using direct URL instead.")
-            image_html = f'<img src="{image_url}" alt="Featured Image" />'
 
+    # ✅ Use direct image URL (better for FB previews)
+    if image_url:
+        image_html = f'<img src="{image_url}" alt="Featured Image" style="max-width:100%;height:auto;" />'
         credit = source_domain if source_domain else "Original Source"
-        body_html = f"{image_html}\n\n{body_html}"
+        body_html = f"{image_html}\n\n{body_html}\n\n<p><em>Image Credit: {credit}</em></p>"
 
     return title, body_html
 
@@ -159,7 +152,7 @@ def get_access_token():
     resp.raise_for_status()
     return resp.json()["access_token"]
 
-def post_to_blogger(title, body, label, draft=True):
+def post_to_blogger(title, body, label, draft=False):
     access_token = get_access_token()
     url = f"https://www.googleapis.com/blogger/v3/blogs/{BLOG_ID}/posts/"
     headers = {"Authorization": f"Bearer {access_token}", "Content-Type": "application/json"}
@@ -167,14 +160,123 @@ def post_to_blogger(title, body, label, draft=True):
     data = {
         "kind": "blogger#post",
         "blog": {"id": BLOG_ID},
-        "title": title,
+        "title": title.replace("<h2>", "").replace("</h2>", ""),
         "content": body,
         "labels": [label]
     }
-    resp = requests.post(url, headers=headers, json=data, params=params)
-    resp.raise_for_status()
-    return resp.json()
 
+    if body: 
+        resp = requests.post(url, headers=headers, json=data, params=params)
+        resp.raise_for_status()
+        post_url = resp.json().get("url")
+        if post_url:
+            share_to_facebook_pages(post_url)
+        return resp.json()
+
+def get_page_access_tokens(user_token: str):
+    """
+    Fetch all page access tokens for pages the user manages.
+    Requires appsecret_proof when called from a server.
+    """
+    app_secret = os.getenv("FB_APP_SECRET")  # Make sure you add this to your .env
+    proof = generate_appsecret_proof(user_token, app_secret)
+
+    url = "https://graph.facebook.com/v20.0/me/accounts"
+    params = {
+        "access_token": user_token,
+        "appsecret_proof": proof,
+        "fields": "id,name,access_token"
+    }
+    response = requests.get(url, params=params)
+
+    if response.status_code != 200:
+        raise Exception(f"Error fetching pages: {response.status_code} - {response.text}")
+
+    data = response.json()
+
+    if "data" not in data:
+        raise Exception(f"Unexpected response: {data}")
+
+    pages = []
+    for page in data["data"]:
+        page_id = page.get("id")
+        page_name = page.get("name")
+        page_token = page.get("access_token")
+
+        if not page_id or not page_token:
+            print(f"⚠️ Skipping entry, missing id/token: {page}")
+            continue
+
+        pages.append({
+            "page_name": page_name,
+            "page_id": page_id,
+            "access_token": page_token
+        })
+
+    return pages
+
+import hmac
+import hashlib
+
+def generate_appsecret_proof(access_token, app_secret):
+    return hmac.new(
+        app_secret.encode('utf-8'),
+        msg=access_token.encode('utf-8'),
+        digestmod=hashlib.sha256
+    ).hexdigest()
+
+def share_to_facebook_pages(url):
+    """
+    Share the given blog post URL to all managed Facebook pages.
+    """
+    USER_ACCESS_TOKEN = os.getenv("FB_USER_ACCESS_TOKEN")
+
+    if not USER_ACCESS_TOKEN:
+        print("⚠️ No Facebook user access token found. Skipping Facebook share.")
+        return
+
+    try:
+        pages = get_page_access_tokens(USER_ACCESS_TOKEN)
+        if not pages:
+            print("⚠️ No Facebook pages found for this account.")
+            return
+
+        results = {}
+        app_secret = os.getenv("FB_APP_SECRET")
+
+        for page in pages:
+            post_url = f"https://graph.facebook.com/v20.0/{page['page_id']}/feed"
+
+            # add appsecret_proof for security
+            proof = generate_appsecret_proof(page["access_token"], app_secret)
+
+            payload = {
+                "link": url,
+                "access_token": page["access_token"],
+                "appsecret_proof": proof
+            }
+
+            response = requests.post(post_url, data=payload)
+
+            if response.status_code == 200:
+                print(f"✅ Shared to Facebook page: {page['page_name']}")
+                results[page["page_name"]] = {"success": True, "response": response.json()}
+            else:
+                print(f"❌ Failed to share on {page['page_name']}")
+                print(f"   Status: {response.status_code}")
+                print(f"   Raw Response: {response.text}")
+                results[page["page_name"]] = {
+                    "success": False,
+                    "error": response.text,
+                    "status": response.status_code
+                }
+
+        return results
+
+    except Exception as e:
+        print(f"⚠️ Facebook sharing error: {e}")
+        return None
+    
 # ---------------- AI ----------------
 def generate_article(getarticle_text):
     client = Client()
