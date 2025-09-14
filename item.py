@@ -8,6 +8,8 @@ from urllib.parse import urlparse
 from bs4 import BeautifulSoup
 from g4f.client import Client
 from dotenv import load_dotenv
+import hmac
+import hashlib
 
 load_dotenv()
 
@@ -24,7 +26,6 @@ RSS_FEEDS = [
     "https://www.theguardian.com/lifeandstyle/health-and-wellbeing/rss"
 ]
 
-
 LABELS = [
     "Celebrity Gossip",
     "Health and Fitness",
@@ -38,6 +39,7 @@ CLIENT_ID = "1060084192434-mv8j60pcnh0l9trcrn3rs926gkd0bceg.apps.googleuserconte
 CLIENT_SECRET = os.getenv("CLIENT_SECRET")
 REFRESH_TOKEN = os.getenv("GOOGLE_REFRESH_TOKEN")
 BLOG_ID = "2976457714246879517"
+
 # ---------------- Helpers ----------------
 def get_random_article():
     all_entries = []
@@ -72,20 +74,6 @@ def get_best_image(entry, article_url):
     except:
         pass
     return None
-
-def download_image(url, filename="temp.jpg"):
-    resp = requests.get(url, stream=True)
-    resp.raise_for_status()
-    with open(filename, "wb") as f:
-        for chunk in resp.iter_content(1024):
-            f.write(chunk)
-    return filename
-
-def embed_image_base64(filepath):
-    with open(filepath, "rb") as f:
-        encoded = base64.b64encode(f.read()).decode("utf-8")
-    ext = filepath.split('.')[-1].lower()
-    return f'<img src="data:image/{ext};base64,{encoded}" alt="Featured Image" />'
 
 def get_source_domain(url):
     try:
@@ -132,7 +120,7 @@ def format_content(content, image_url=None, source_domain=None):
 
     body_html = "\n".join(formatted_parts)
 
-    # ✅ Use direct image URL (better for FB previews)
+    # ✅ Keep direct image (better for FB previews)
     if image_url:
         image_html = f'<img src="{image_url}" alt="Featured Image" style="max-width:100%;height:auto;" />'
         credit = source_domain if source_domain else "Original Source"
@@ -165,20 +153,32 @@ def post_to_blogger(title, body, label, draft=False):
         "labels": [label]
     }
 
-    if body: 
+    if body:
         resp = requests.post(url, headers=headers, json=data, params=params)
+
+        # ✅ Skip failed publishes
+        if resp.status_code == 502:
+            print(f"⚠️ Blogger 502 error. Skipping: {title}")
+            return None
+
         resp.raise_for_status()
         post_url = resp.json().get("url")
+
         if post_url:
-            share_to_facebook_pages(post_url)
+            share_to_facebook_pages(post_url, title)
+
         return resp.json()
 
+# ---------------- Facebook ----------------
+def generate_appsecret_proof(access_token, app_secret):
+    return hmac.new(
+        app_secret.encode('utf-8'),
+        msg=access_token.encode('utf-8'),
+        digestmod=hashlib.sha256
+    ).hexdigest()
+
 def get_page_access_tokens(user_token: str):
-    """
-    Fetch all page access tokens for pages the user manages.
-    Requires appsecret_proof when called from a server.
-    """
-    app_secret = os.getenv("FB_APP_SECRET")  # Make sure you add this to your .env
+    app_secret = os.getenv("FB_APP_SECRET")
     proof = generate_appsecret_proof(user_token, app_secret)
 
     url = "https://graph.facebook.com/v20.0/me/accounts"
@@ -188,133 +188,93 @@ def get_page_access_tokens(user_token: str):
         "fields": "id,name,access_token"
     }
     response = requests.get(url, params=params)
-
-    if response.status_code != 200:
-        raise Exception(f"Error fetching pages: {response.status_code} - {response.text}")
+    response.raise_for_status()
 
     data = response.json()
+    return [
+        {"page_name": page["name"], "page_id": page["id"], "access_token": page["access_token"]}
+        for page in data.get("data", [])
+        if "id" in page and "access_token" in page
+    ]
 
-    if "data" not in data:
-        raise Exception(f"Unexpected response: {data}")
-
-    pages = []
-    for page in data["data"]:
-        page_id = page.get("id")
-        page_name = page.get("name")
-        page_token = page.get("access_token")
-
-        if not page_id or not page_token:
-            print(f"⚠️ Skipping entry, missing id/token: {page}")
-            continue
-
-        pages.append({
-            "page_name": page_name,
-            "page_id": page_id,
-            "access_token": page_token
-        })
-
-    return pages
-
-import hmac
-import hashlib
-
-def generate_appsecret_proof(access_token, app_secret):
-    return hmac.new(
-        app_secret.encode('utf-8'),
-        msg=access_token.encode('utf-8'),
-        digestmod=hashlib.sha256
-    ).hexdigest()
-
-def share_to_facebook_pages(url):
-    """
-    Share the given blog post URL to all managed Facebook pages.
-    """
+def share_to_facebook_pages(url, title):
     USER_ACCESS_TOKEN = os.getenv("FB_USER_ACCESS_TOKEN")
+    app_secret = os.getenv("FB_APP_SECRET")
 
     if not USER_ACCESS_TOKEN:
-        print("⚠️ No Facebook user access token found. Skipping Facebook share.")
+        print("⚠️ No Facebook user token. Skipping FB share.")
         return
 
     try:
         pages = get_page_access_tokens(USER_ACCESS_TOKEN)
         if not pages:
-            print("⚠️ No Facebook pages found for this account.")
+            print("⚠️ No Facebook pages found.")
             return
-
-        results = {}
-        app_secret = os.getenv("FB_APP_SECRET")
 
         for page in pages:
             post_url = f"https://graph.facebook.com/v20.0/{page['page_id']}/feed"
-
-            # add appsecret_proof for security
             proof = generate_appsecret_proof(page["access_token"], app_secret)
 
             payload = {
                 "link": url,
+                "message": f"📢 New blog post: {title}\nRead more: {url}",
                 "access_token": page["access_token"],
-                "appsecret_proof": proof
+                "appsecret_proof": proof,
             }
 
-            response = requests.post(post_url, data=payload)
+            # ✅ Force visibility public
+            payload["privacy"] = '{"value":"EVERYONE"}'
 
+            response = requests.post(post_url, data=payload)
             if response.status_code == 200:
                 print(f"✅ Shared to Facebook page: {page['page_name']}")
-                results[page["page_name"]] = {"success": True, "response": response.json()}
             else:
-                print(f"❌ Failed to share on {page['page_name']}")
-                print(f"   Status: {response.status_code}")
-                print(f"   Raw Response: {response.text}")
-                results[page["page_name"]] = {
-                    "success": False,
-                    "error": response.text,
-                    "status": response.status_code
-                }
-
-        return results
+                print(f"❌ FB share failed: {page['page_name']} → {response.text}")
 
     except Exception as e:
         print(f"⚠️ Facebook sharing error: {e}")
-        return None
-    
+
 # ---------------- AI ----------------
 def generate_article(getarticle_text):
-    client = Client()
-    response = client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[{
+    if not getarticle_text or len(getarticle_text.strip()) < 100:
+        return None  # Not enough text
+
+    try:
+        client = Client()
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{
                 "role": "user",
-            "content": (
-                "You are a professional blog writer.\n\n"
-                f"Here is some source text:\n\n{getarticle_text}\n\n"
-                "Your task:\n"
-                "- Write a **500-word original blog post** based on the ideas and facts from the source text.\n"
-                "- Do **NOT copy any sentences** or wording directly; fully rewrite in your own words.\n"
-                "- Use **American English**, engaging and clear, in an **active voice**.\n"
-                "- Structure with <h2> and <h3> headings.\n"
-                "- Wrap paragraphs in <p> tags.\n"
-                "- Use lists (<ul>/<li>) where relevant.\n"
-                "- Add at least 2 authoritative outbound links (e.g., Wikipedia, IMDb, official websites).\n"
-                "- Do NOT suggest images.\n"
-                "- Create a catchy blog title.\n"
-                "- End with a strong call-to-action that encourages readers to comment, share, or read more."
-            )
-        }],
-        web_search=False
-    )
-    return response.choices[0].message.content.strip()
+                "content": (
+                    "You are a professional blog writer.\n\n"
+                    f"Here is some source text:\n\n{getarticle_text}\n\n"
+                    "Your task:\n"
+                    "- Write a **500-word original blog post** based on the ideas and facts from the source text.\n"
+                    "- Do **NOT copy any sentences** or wording directly; fully rewrite in your own words.\n"
+                    "- Use **American English**, engaging and clear, in an **active voice**.\n"
+                    "- Structure with <h2> and <h3> headings.\n"
+                    "- Wrap paragraphs in <p> tags.\n"
+                    "- Use lists (<ul>/<li>) where relevant.\n"
+                    "- Add at least 2 authoritative outbound links.\n"
+                    "- Do NOT suggest images.\n"
+                    "- Create a catchy blog title.\n"
+                    "- End with a strong call-to-action."
+                )
+            }],
+            web_search=False
+        )
 
-def create_image(title):
-    client = Client()
-    response = client.images.generate(
-        model="flux",
-        prompt=f"Featured blog illustration for: {title}",
-        size="1024x1024",
-        response_format="url"
-    )
+        content = response.choices[0].message.content.strip()
 
-    image_url = response.data[0].url
-    return image_url
+        # 🚨 Strict guard against garbage output
+        if not content or "error code: 502" in content.lower() or len(content.split()) < 100:
+            return None  
+
+        return content
+
+    except Exception as e:
+        print(f"⚠️ AI generation failed: {e}")
+        return None
 
 def choose_label(article_text):
     client = Client()
@@ -324,53 +284,71 @@ def choose_label(article_text):
             "role": "user",
             "content": (
                 f"Given this article:\n\n{article_text}\n\n"
-                f"Choose ONLY ONE most relevant label from this list:\n{', '.join(LABELS)}\n"
-                "Just reply with the label text, nothing else."
+                f"Choose ONLY ONE most relevant label from:\n{', '.join(LABELS)}\n"
+                "Reply with the label text only."
             )
         }]
     )
     return response.choices[0].message.content.strip()
 
 def extract_article_text(article_url, max_chars=3000):
-    """
-    Fetch and extract readable text from an article page.
-    Trims to max_chars to avoid huge prompts.
-    """
     try:
         resp = requests.get(article_url, headers={"User-Agent": "Mozilla/5.0"}, timeout=10)
         resp.raise_for_status()
         soup = BeautifulSoup(resp.text, "html.parser")
 
-        # Remove scripts, styles, ads
         for tag in soup(["script", "style", "aside", "footer", "header", "nav"]):
             tag.decompose()
 
-        # Collect paragraph text
         paragraphs = soup.find_all("p")
         text = "\n".join(p.get_text(" ", strip=True) for p in paragraphs if p.get_text(strip=True))
-
-        if not text:
-            return None  # nothing extracted
-
-        return text[:max_chars]
+        return text[:max_chars] if text else None
     except Exception as e:
         print(f"⚠️ Could not extract article text: {e}")
         return None
 
 # ---------------- Main Flow ----------------
-article_url, image_url = get_random_article()
-if not article_url:
-    print("⚠️ No articles found in RSS feeds.")
-    exit()
+MAX_TRIES = 5
+success = False
 
-getarticle_text = extract_article_text(article_url)
-if not getarticle_text:
-    print("⚠️ No articles found in RSS feeds.")
-    exit()
-    
-article_text = generate_article(getarticle_text)
-label = choose_label(article_text)
-source_domain = get_source_domain(article_url)
-title, body = format_content(article_text, image_url, source_domain)
-post_to_blogger(title, body, label)
-print(f"✅ Blog post published: {title} | Label: {label} | Image credit: {source_domain}")
+for attempt in range(MAX_TRIES):
+    print(f"🔄 Attempt {attempt + 1}/{MAX_TRIES}...")
+
+    article_url, image_url = get_random_article()
+    if not article_url:
+        print("⚠️ No articles found in RSS feeds.")
+        continue
+
+    getarticle_text = extract_article_text(article_url)
+    if not getarticle_text:
+        print("⚠️ No article text extracted. Skipping...")
+        continue
+
+    try:
+        article_text = generate_article(getarticle_text)
+    except Exception as e:
+        print(f"⚠️ AI failed to generate article: {e}")
+        continue
+
+    # ✅ Validation step (avoid “error code: 502” posts)
+    if not article_text or "error code" in article_text.lower() or len(article_text.strip()) < 200:
+        print("⚠️ Invalid article generated. Skipping...")
+        continue
+
+    label = choose_label(article_text)
+    source_domain = get_source_domain(article_url)
+    title, body = format_content(article_text, image_url, source_domain)
+
+    # double-check title
+    if not title or "error code" in title.lower():
+        print("⚠️ Invalid title generated. Skipping...")
+        continue
+
+    # ✅ Publish to Blogger
+    post_to_blogger(title, body, label)
+    print(f"✅ Blog post published: {title} | Label: {label} | Image credit: {source_domain}")
+    success = True
+    break  # stop after first successful publish
+
+if not success:
+    print("❌ Failed to publish after several attempts.")
