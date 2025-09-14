@@ -160,6 +160,8 @@ def post_to_blogger(title, body, label, draft=False):
 
     if body:
         resp = requests.post(url, headers=headers, json=data, params=params)
+        print(resp.status_code)
+        print(resp.text)
 
         # ✅ Skip failed publishes
         if resp.status_code == 502:
