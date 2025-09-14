@@ -142,16 +142,20 @@ def get_access_token():
 
 def post_to_blogger(title, body, label, draft=False):
     access_token = get_access_token()
-    title = title.replace("<h2>", "").replace("</h2>", ""),
+    # Remove HTML tags from title safely
+    import re
+    title = re.sub(r'<[^>]+>', '', title).strip()
+
     url = f"https://www.googleapis.com/blogger/v3/blogs/{BLOG_ID}/posts/"
     headers = {"Authorization": f"Bearer {access_token}", "Content-Type": "application/json"}
     params = {"isDraft": "true"} if draft else {}
+    
     data = {
         "kind": "blogger#post",
         "blog": {"id": BLOG_ID},
         "title": title,
         "content": body,
-        "labels": [label]
+        "labels": [label] if label else []
     }
 
     if body:
