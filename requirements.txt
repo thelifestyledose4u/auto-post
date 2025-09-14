@@ -23,3 +23,14 @@ python-dotenv
 ddgs
 python-dotenv
 feedparser
+gspread
+google-auth
+requests
+google-api-python-client
+google-auth
+google-auth-httplib2
+google-auth-oauthlib
+gspread
+Pillow
+python-dotenv
+requests

@@ -1,0 +1,34 @@
+name: Run Blogger Automation
+
+on:
+  schedule:
+    - cron: "*/30 * * * *" # Every 30 minutes (UTC time)
+  workflow_dispatch: # Allow manual trigger too
+
+jobs:
+  run-script:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+
+      - name: Run script
+        env:
+          CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
+          GOOGLE_REFRESH_TOKEN: ${{ secrets.GOOGLE_REFRESH_TOKEN }}
+          SHEET_ID: ${{ secrets.SHEET_ID }}
+          FB_USER_ACCESS_TOKEN: ${{ secrets.FB_USER_ACCESS_TOKEN }}
+          FB_APP_SECRET: ${{ secrets.FB_APP_SECRET }}
+          FREEIMAGE_API_KEY: ${{ secrets.FREEIMAGE_API_KEY }}
+        run: |
+          python image.py
