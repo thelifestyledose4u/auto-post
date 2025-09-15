@@ -2,7 +2,7 @@ name: Run Blogger Automation
 
 on:
   schedule:
-    - cron: "*/30 * * * *" # Every 30 minutes (UTC time)
+    - cron: "*0 */3 * * *" # Every 3 hours
   workflow_dispatch: # Allow manual trigger too
 
 jobs:
