@@ -1,4 +1,3 @@
-from http import client
 import os
 import random
 import requests
@@ -252,7 +251,7 @@ def generate_article(getarticle_text):
         return None  # Not enough text
 
     try:
-        client = Client(session_cookie="003032c13e-4e37-421d-8161-1181fed3caff")
+        client = Client(api_key="sk-V2xkqFG7fmbLiDVULDhu3w")
         response = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[{
@@ -289,7 +288,7 @@ def generate_article(getarticle_text):
         return None
 
 def choose_label(article_text):
-    client = Client()
+    client = Client(api_key="sk-V2xkqFG7fmbLiDVULDhu3w")
     response = client.chat.completions.create(
         model="gpt-4o-mini",
         messages=[{
