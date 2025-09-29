@@ -247,47 +247,35 @@ def share_to_facebook_pages(url, title):
         print(f"⚠️ Facebook sharing error: {e}")
 
 # ---------------- AI ----------------
-def generate_article(getarticle_text):
-    """
-    Generate a unique blog post using MetaAI provider based on the source text.
-    """
+def generate_article(getarticle_text, max_retries=3):
     if not getarticle_text or len(getarticle_text.strip()) < 100:
-        return None  # Not enough text
-
-    try:
-        client = Client(provider=MetaAI)
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[{
-                "role": "user",
-                "content": (
-                    "You are a professional blog writer.\n\n"
-                    f"Here is some source text:\n\n{getarticle_text}\n\n"
-                    "Your task:\n"
-                    "- Write a **500-word original blog post** based on the ideas and facts from the source text.\n"
-                    "- Do **NOT copy any sentences** or wording directly; fully rewrite in your own words.\n"
-                    "- Use **American English**, engaging and clear, in an **active voice**.\n"
-                    "- Structure with <h2> and <h3> headings.\n"
-                    "- Wrap paragraphs in <p> tags.\n"
-                    "- Use lists (<ul>/<li>) where relevant.\n"
-                    "- Add at least 2 authoritative outbound links.\n"
-                    "- Do NOT suggest images.\n"
-                    "- Create a catchy blog title.\n"
-                    "- End with a strong call-to-action."
-                )
-            }]
-        )
-        content = response.choices[0].message.content.strip()
-
-        # 🚨 Guard against empty or short outputs
-        if not content or len(content.split()) < 100:
-            return None  
-
-        return content
-
-    except Exception as e:
-        print(f"⚠️ AI generation failed: {e}")
         return None
+
+    for attempt in range(max_retries):
+        try:
+            client = Client(provider=MetaAI)
+            response = client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[{
+                    "role": "user",
+                    "content": (
+                        "You are a professional blog writer.\n\n"
+                        f"Here is some source text:\n\n{getarticle_text}\n\n"
+                        "Write a **500-word original blog post** with <h2>/<h3> headings, <p> paragraphs, lists where needed, "
+                        "2+ authoritative outbound links, American English, active voice, catchy title, and strong call-to-action."
+                    )
+                }]
+            )
+
+            content = response.choices[0].message.content.strip()
+            if content and len(content.split()) > 100:
+                return content
+
+        except Exception as e:
+            print(f"⚠️ Attempt {attempt+1} failed: {e}")
+    
+    print("⚠️ All attempts to generate article failed.")
+    return None
 
 def choose_label(article_text):
     client = Client(session_cookie="003032c13e-4e37-421d-8161-1181fed3caff")
