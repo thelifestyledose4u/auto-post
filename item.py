@@ -11,7 +11,13 @@ from dotenv import load_dotenv
 import hmac
 import hashlib
 
+
 load_dotenv()
+
+CLIENT_SECRET = os.getenv("CLIENT_SECRET")
+REFRESH_TOKEN = os.getenv("GOOGLE_REFRESH_TOKEN")
+if not CLIENT_SECRET or not REFRESH_TOKEN:
+    raise RuntimeError("Missing CLIENT_SECRET or GOOGLE_REFRESH_TOKEN in environment. Please check your .env file.")
 
 # ---------------- Config ----------------
 RSS_FEEDS = [
@@ -38,7 +44,8 @@ LABELS = [
 CLIENT_ID = "1060084192434-mv8j60pcnh0l9trcrn3rs926gkd0bceg.apps.googleusercontent.com"
 CLIENT_SECRET = os.getenv("CLIENT_SECRET")
 REFRESH_TOKEN = os.getenv("GOOGLE_REFRESH_TOKEN")
-BLOG_ID = "2976457714246879517"
+if not CLIENT_SECRET or not REFRESH_TOKEN:
+    raise RuntimeError("Missing CLIENT_SECRET or GOOGLE_REFRESH_TOKEN in environment. Please check your .env file.")
 
 # ---------------- Helpers ----------------
 def get_random_article():
@@ -245,7 +252,7 @@ def generate_article(getarticle_text):
         return None  # Not enough text
 
     try:
-        client = Client()
+        client = Client(session_cookie="003032c13e-4e37-421d-8161-1181fed3caff")
         response = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[{
