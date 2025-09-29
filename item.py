@@ -9,6 +9,7 @@ from g4f.client import Client
 from dotenv import load_dotenv
 import hmac
 import hashlib
+from g4f.Provider import MetaAI
 
 
 load_dotenv()
@@ -247,11 +248,14 @@ def share_to_facebook_pages(url, title):
 
 # ---------------- AI ----------------
 def generate_article(getarticle_text):
+    """
+    Generate a unique blog post using MetaAI provider based on the source text.
+    """
     if not getarticle_text or len(getarticle_text.strip()) < 100:
         return None  # Not enough text
 
     try:
-        client = Client(api_key="sk-V2xkqFG7fmbLiDVULDhu3w")
+        client = Client(provider=MetaAI)
         response = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[{
@@ -271,14 +275,12 @@ def generate_article(getarticle_text):
                     "- Create a catchy blog title.\n"
                     "- End with a strong call-to-action."
                 )
-            }],
-            web_search=False
+            }]
         )
-
         content = response.choices[0].message.content.strip()
 
-        # 🚨 Strict guard against garbage output
-        if not content or "error code: 502" in content.lower() or len(content.split()) < 100:
+        # 🚨 Guard against empty or short outputs
+        if not content or len(content.split()) < 100:
             return None  
 
         return content
@@ -288,7 +290,7 @@ def generate_article(getarticle_text):
         return None
 
 def choose_label(article_text):
-    client = Client(api_key="sk-V2xkqFG7fmbLiDVULDhu3w")
+    client = Client(session_cookie="003032c13e-4e37-421d-8161-1181fed3caff")
     response = client.chat.completions.create(
         model="gpt-4o-mini",
         messages=[{
