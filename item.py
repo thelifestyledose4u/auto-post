@@ -44,6 +44,8 @@ LABELS = [
 CLIENT_ID = "1060084192434-mv8j60pcnh0l9trcrn3rs926gkd0bceg.apps.googleusercontent.com"
 CLIENT_SECRET = os.getenv("CLIENT_SECRET")
 REFRESH_TOKEN = os.getenv("GOOGLE_REFRESH_TOKEN")
+BLOG_ID = '2976457714246879517'
+
 if not CLIENT_SECRET or not REFRESH_TOKEN:
     raise RuntimeError("Missing CLIENT_SECRET or GOOGLE_REFRESH_TOKEN in environment. Please check your .env file.")
 
