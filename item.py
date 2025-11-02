@@ -10,6 +10,7 @@ from dotenv import load_dotenv
 import hmac
 import hashlib
 from g4f.Provider import MetaAI
+import re
 
 
 load_dotenv()
@@ -94,13 +95,27 @@ def get_source_domain(url):
         return "Original Source"
 
 def format_content(content, image_url=None, source_domain=None):
-    lines = [ln.strip() for ln in content.splitlines() if ln.strip()]
+    def strip_wrapped_bold(s: str) -> str:
+        # Remove wrapping ** ... ** only when they surround the entire line
+        return re.sub(r'^\*\*\s*(.*?)\s*\*\*$', r'\1', s)
+
+    def remove_inline_bold(s: str) -> str:
+        # Remove **...** anywhere in the line (keeps inner text)
+        return re.sub(r'\*\*(.*?)\*\*', r'\1', s)
+
+    lines = [ln.rstrip() for ln in content.splitlines() if ln.strip()]
     title = lines[0].lstrip("# ").strip() if lines else "Untitled Post"
+    title = strip_wrapped_bold(title)
+    title = remove_inline_bold(title)
     body_lines = lines[1:]
     formatted_parts = []
     in_list = False
 
-    for line in body_lines:
+    for raw_line in body_lines:
+        line = raw_line.strip()
+        # remove any inline bold markers so list items and headings lose ** markers
+        line = remove_inline_bold(line)
+
         if line.lower().startswith("image:") or "unsplash" in line.lower():
             continue
         if line.startswith("### "):
@@ -113,11 +128,12 @@ def format_content(content, image_url=None, source_domain=None):
                 formatted_parts.append("</ul>")
                 in_list = False
             formatted_parts.append(f"<h2>{line[3:].strip()}</h2>")
-        elif line.startswith("- "):
+        elif line.startswith("- ") or line.startswith("* "):
             if not in_list:
                 formatted_parts.append("<ul>")
                 in_list = True
-            formatted_parts.append(f"<li>{line[2:].strip()}</li>")
+            item_text = line[2:].strip()
+            formatted_parts.append(f"<li>{item_text}</li>")
         else:
             if in_list:
                 formatted_parts.append("</ul>")
