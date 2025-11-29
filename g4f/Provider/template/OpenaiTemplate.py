@@ -87,8 +87,7 @@ class OpenaiTemplate(AsyncGeneratorProvider, ProviderModelMixin, RaiseErrorMixin
     ) -> AsyncResult:
         if api_key is None and cls.api_key is not None:
             api_key = cls.api_key
-        if cls.needs_auth and api_key is None:
-            raise MissingAuthError('Add a "api_key"')
+       
         async with StreamSession(
             proxy=proxy,
             headers=cls.get_headers(stream, api_key, headers),

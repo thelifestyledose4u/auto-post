@@ -1249,7 +1249,7 @@ class BlackboxPro(AsyncGeneratorProvider, ProviderModelMixin):
             if not session_data:
                 # No valid session found, raise an error
                 debug.log("BlackboxPro: No valid session found in HAR files")
-                raise NoValidHarFileError("No valid Blackbox session found. Please log in to Blackbox AI in your browser first.")
+                # raise NoValidHarFileError("No valid Blackbox session found. Please log in to Blackbox AI in your browser first.")
 
             debug.log(f"BlackboxPro: Using session from HAR file (email: {session_data['user'].get('email', 'unknown')})")
 

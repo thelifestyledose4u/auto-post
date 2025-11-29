@@ -180,7 +180,7 @@ def post_to_blogger(title, body, label, draft=False):
         "blog": {"id": BLOG_ID},
         "title": title,
         "content": body,
-        "labels": [label] if label else []
+        "labels": ['News']
     }
 
     if body:
