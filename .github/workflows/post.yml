@@ -20,12 +20,20 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Run script
+      - name: Run item.py script
         env:
           GOOGLE_REFRESH_TOKEN: ${{ secrets.GOOGLE_REFRESH_TOKEN }}
           CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
           FB_APP_SECRET: ${{ secrets.FB_APP_SECRET }}
           FB_APP_ID: ${{ secrets.FB_APP_ID }}
           FB_USER_ACCESS_TOKEN: ${{ secrets.FB_USER_ACCESS_TOKEN }}
-
         run: python item.py
+
+      - name: Run blog.py script
+        env:
+          GOOGLE_REFRESH_TOKEN: ${{ secrets.GOOGLE_REFRESH_TOKEN }}
+          CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
+          FB_APP_SECRET: ${{ secrets.FB_APP_SECRET }}
+          FB_APP_ID: ${{ secrets.FB_APP_ID }}
+          FB_USER_ACCESS_TOKEN: ${{ secrets.FB_USER_ACCESS_TOKEN }}
+        run: python celeb.py

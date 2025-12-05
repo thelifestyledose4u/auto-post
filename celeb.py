@@ -23,23 +23,11 @@ if not CLIENT_SECRET or not REFRESH_TOKEN:
 # ---------------- Config ----------------
 RSS_FEEDS = [
     "https://feeds-api.dotdashmeredith.com/v1/rss/google/6bb3396f-8157-4dc5-8fcf-c1bd9d415be8",
-    "https://feeds-api.dotdashmeredith.com/v1/rss/google/d5b7c39f-d8c6-4c04-994a-d4499e60b2a8",
-    "https://feeds-api.dotdashmeredith.com/v1/rss/google/33159e60-7268-41c6-8368-437af4f8f3e8",
-    "https://feeds-api.dotdashmeredith.com/v1/rss/google/85fdec1d-95a2-4e50-8641-5e2d0ef816a7",
-    "https://www.theguardian.com/world/rss",
-    "https://www.theguardian.com/uk/lifeandstyle/rss",
-    "https://www.theguardian.com/uk/environment/rss",
-    "https://www.theguardian.com/uk/travel/rss",
-    "https://www.theguardian.com/lifeandstyle/health-and-wellbeing/rss"
+    "https://www.theguardian.com/lifeandstyle/celebrity/rss"
 ]
 
 LABELS = [
     "Celebrity Gossip",
-    "Health and Fitness",
-    "Invest & Grow",
-    "Lifestyle",
-    "News",
-    "Travel"
 ]
 
 CLIENT_ID = "1060084192434-mv8j60pcnh0l9trcrn3rs926gkd0bceg.apps.googleusercontent.com"
@@ -180,7 +168,7 @@ def post_to_blogger(title, body, label, draft=False):
         "blog": {"id": BLOG_ID},
         "title": title,
         "content": body,    
-        "labels": ['News']
+        "labels": ['News',"Celebrity Gossip"]
     }
 
     if body:
@@ -303,8 +291,6 @@ def choose_label(article_text):
             "role": "user",
             "content": (
                 f"Given this article:\n\n{article_text}\n\n"
-                f"Choose ONLY ONE most relevant label from:\n{', '.join(LABELS)}\n"
-                "Reply with the label text only."
             )
         }]
     )
