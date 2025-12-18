@@ -335,7 +335,8 @@ class PuterJS(AsyncGeneratorProvider, ProviderModelMixin):
         **kwargs
     ) -> AsyncResult:
         if not api_key:
-            raise MissingAuthError("API key is required for Puter.js API")
+            pass
+            # raise MissingAuthError("API key is required for Puter.js API")
 
         if not cls.models:
             cls.get_models()
