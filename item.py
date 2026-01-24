@@ -157,13 +157,29 @@ def get_access_token():
     url = "https://oauth2.googleapis.com/token"
     data = {
         "client_id": CLIENT_ID,
-        "client_secret": CLIENT_SECRET,
-        "refresh_token": REFRESH_TOKEN,
-        "grant_type": "refresh_token"
+        "client_secret": os.getenv("CLIENT_SECRET"),
+        "refresh_token": os.getenv("GOOGLE_REFRESH_TOKEN"),
+        "grant_type": "refresh_token",
     }
-    resp = requests.post(url, data=data)
-    resp.raise_for_status()
-    return resp.json()["access_token"]
+
+    try:
+        resp = requests.post(url, data=data, timeout=15)
+        resp.raise_for_status()
+        return resp.json()["access_token"]
+
+    except requests.HTTPError as e:
+        error_text = e.response.text.lower()
+
+        if "invalid_grant" in error_text:
+            print(
+                "❌ Google refresh token expired or revoked.\n"
+                "Manual OAuth re-consent required.\n"
+                "Publishing halted."
+            )
+
+        raise RuntimeError(
+            f"Google OAuth failed: {e.response.text}"
+        )
 
 def post_to_blogger(title, body, label, draft=False):
     access_token = get_access_token()
