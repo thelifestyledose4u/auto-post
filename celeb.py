@@ -259,7 +259,7 @@ def generate_article(getarticle_text, max_retries=3):
 
     for attempt in range(max_retries):
         try:
-            client = Client(provider=MetaAI)
+            client = Client()
             response = client.chat.completions.create(
                 model="gpt-4o-mini",
                 messages=[{
@@ -282,19 +282,6 @@ def generate_article(getarticle_text, max_retries=3):
     
     print("⚠️ All attempts to generate article failed.")
     return None
-
-def choose_label(article_text):
-    client = Client(session_cookie="003032c13e-4e37-421d-8161-1181fed3caff")
-    response = client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[{
-            "role": "user",
-            "content": (
-                f"Given this article:\n\n{article_text}\n\n"
-            )
-        }]
-    )
-    return response.choices[0].message.content.strip()
 
 def extract_article_text(article_url, max_chars=3000):
     try:
@@ -340,7 +327,7 @@ for attempt in range(MAX_TRIES):
         print("⚠️ Invalid article generated. Skipping...")
         continue
 
-    label = choose_label(article_text)
+    label = ""
     source_domain = get_source_domain(article_url)
     title, body = format_content(article_text, image_url, source_domain)
 
