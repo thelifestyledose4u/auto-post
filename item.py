@@ -19,11 +19,15 @@ if not CLIENT_SECRET or not REFRESH_TOKEN:
 
 # ---------------- Config ----------------
 RSS_FEEDS = [
-    "https://feeds.bbci.co.uk/news/world/rss.xml",
-    "http://rss.cnn.com/rss/edition.rss",
-    "https://eol-feeds.eonline.com/rssfeed/us/top_stories",
-    "https://www.menshealth.com/rss/all.xml"
-]
+    "https://feeds-api.dotdashmeredith.com/v1/rss/google/6bb3396f-8157-4dc5-8fcf-c1bd9d415be8",
+    "https://feeds-api.dotdashmeredith.com/v1/rss/google/d5b7c39f-d8c6-4c04-994a-d4499e60b2a8",
+    "https://feeds-api.dotdashmeredith.com/v1/rss/google/33159e60-7268-41c6-8368-437af4f8f3e8",
+    "https://feeds-api.dotdashmeredith.com/v1/rss/google/85fdec1d-95a2-4e50-8641-5e2d0ef816a7",
+    "https://www.theguardian.com/world/rss",
+    "https://www.theguardian.com/uk/lifeandstyle/rss",
+    "https://www.theguardian.com/uk/environment/rss",
+    "https://www.theguardian.com/uk/travel/rss",
+    "https://www.theguardian.com/lifeandstyle/health-and-wellbeing/rss"]
 
 LABELS = [
     "Celebrity Gossip",
