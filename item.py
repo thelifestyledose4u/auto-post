@@ -20,10 +20,6 @@ if not CLIENT_SECRET or not REFRESH_TOKEN:
 # ---------------- Config ----------------
 # ---------------- Config ----------------
 RSS_FEEDS = [
-    # The Guardian
-   
-
-    # Page Six (Full + Categories)
     "https://pagesix.com/feed/",
     "https://pagesix.com/entertainment/feed/",
     "https://pagesix.com/tv/feed/",
@@ -295,7 +291,7 @@ def generate_article(getarticle_text, max_retries=3):
         try:
             client = Client()
             response = client.chat.completions.create(
-                model="gpt-4o-mini",
+                model="gpt-4",
                 messages=[{
                     "role": "user",
                     "content": (
@@ -344,7 +340,6 @@ for attempt in range(MAX_TRIES):
     if not article_url:
         print("⚠️ No articles found in RSS feeds.")
         continue
-
     getarticle_text = extract_article_text(article_url)
     if not getarticle_text:
         print("⚠️ No article text extracted. Skipping...")
@@ -355,7 +350,8 @@ for attempt in range(MAX_TRIES):
     except Exception as e:
         print(f"⚠️ AI failed to generate article: {e}")
         continue
-
+    
+    print(article_text)
     # ✅ Validation step (avoid “error code: 502” posts)
     if not article_text or "error code" in article_text.lower() or len(article_text.strip()) < 200:
         print("⚠️ Invalid article generated. Skipping...")
