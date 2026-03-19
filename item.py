@@ -21,10 +21,7 @@ if not CLIENT_SECRET or not REFRESH_TOKEN:
 # ---------------- Config ----------------
 RSS_FEEDS = [
     # The Guardian
-    "https://www.theguardian.com/world/rss",
-    "https://www.theguardian.com/uk/lifeandstyle/rss",
-    "https://www.theguardian.com/uk/environment/rss",
-    "https://www.theguardian.com/uk/travel/rss",
+   
 
     # Page Six (Full + Categories)
     "https://pagesix.com/feed/",
