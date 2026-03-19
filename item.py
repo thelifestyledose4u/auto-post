@@ -4,6 +4,7 @@ import requests
 import feedparser
 from urllib.parse import urlparse
 from bs4 import BeautifulSoup
+import g4f
 from g4f.client import Client
 from dotenv import load_dotenv
 import hmac
@@ -291,7 +292,8 @@ def generate_article(getarticle_text, max_retries=3):
         try:
             client = Client()
             response = client.chat.completions.create(
-                model="gpt-4",
+                model="gpt-4o-mini",
+                provider=g4f.Provider.Blackbox,
                 messages=[{
                     "role": "user",
                     "content": (
