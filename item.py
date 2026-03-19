@@ -18,16 +18,29 @@ if not CLIENT_SECRET or not REFRESH_TOKEN:
     raise RuntimeError("Missing CLIENT_SECRET or GOOGLE_REFRESH_TOKEN in environment. Please check your .env file.")
 
 # ---------------- Config ----------------
+# ---------------- Config ----------------
 RSS_FEEDS = [
-    "https://feeds-api.dotdashmeredith.com/v1/rss/google/6bb3396f-8157-4dc5-8fcf-c1bd9d415be8",
-    "https://feeds-api.dotdashmeredith.com/v1/rss/google/d5b7c39f-d8c6-4c04-994a-d4499e60b2a8",
-    "https://feeds-api.dotdashmeredith.com/v1/rss/google/33159e60-7268-41c6-8368-437af4f8f3e8",
-    "https://feeds-api.dotdashmeredith.com/v1/rss/google/85fdec1d-95a2-4e50-8641-5e2d0ef816a7",
+    # The Guardian
     "https://www.theguardian.com/world/rss",
     "https://www.theguardian.com/uk/lifeandstyle/rss",
     "https://www.theguardian.com/uk/environment/rss",
     "https://www.theguardian.com/uk/travel/rss",
-    "https://www.theguardian.com/lifeandstyle/health-and-wellbeing/rss"]
+
+    # Page Six (Full + Categories)
+    "https://pagesix.com/feed/",
+    "https://pagesix.com/entertainment/feed/",
+    "https://pagesix.com/tv/feed/",
+    "https://pagesix.com/style/feed/",
+    "https://pagesix.com/travel/feed/",
+
+    # Hollywood Reporter (Full + Categories)
+    "https://www.hollywoodreporter.com/feed/",
+    "https://www.hollywoodreporter.com/c/news/feed/",
+    "https://www.hollywoodreporter.com/c/tv/feed/",
+    "https://www.hollywoodreporter.com/c/business/feed/",
+    "https://www.hollywoodreporter.com/t/music/feed/",
+    "https://www.hollywoodreporter.com/t/awards/feed/"
+]
 
 LABELS = [
     "Celebrity Gossip",

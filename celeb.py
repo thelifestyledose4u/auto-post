@@ -22,8 +22,8 @@ if not CLIENT_SECRET or not REFRESH_TOKEN:
 
 # ---------------- Config ----------------
 RSS_FEEDS = [
-    "https://feeds-api.dotdashmeredith.com/v1/rss/google/6bb3396f-8157-4dc5-8fcf-c1bd9d415be8",
-    "https://www.theguardian.com/lifeandstyle/celebrity/rss"
+    "https://pagesix.com/celebrity-news/feed/",
+    "https://www.hollywoodreporter.com/c/movies/feed/"
 ]
 
 LABELS = [
