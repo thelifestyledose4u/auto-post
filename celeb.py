@@ -270,47 +270,63 @@ def generate_article(getarticle_text, max_retries=3):
 
     for attempt in range(max_retries):
         try:
+            print(f"   🤖 Generating article (attempt {attempt+1})...")
             client = Client()
             response = client.chat.completions.create(
-                model="gpt-4",
                 messages=[{
                     "role": "user",
                     "content": (
-                        "You are a professional blog writer.\n\n"
-                        f"Here is some source text:\n\n{getarticle_text}\n\n"
-                        "Write ONLY a 500-word original blog post. Requirements:\n"
-                        "1. Start with a compelling title on the first line: # [Title]\n"
-                        "2. Include ## and ### subheadings, paragraphs, and bullet lists\n"
-                        "3. Add 2+ authoritative outbound links\n"
-                        "4. Use American English, active voice, strong call-to-action\n"
-                        "5. Start immediately with # - NO preamble or explanation\n"
-                        "6. NEVER include follow-up questions, meta-commentary, or offers at the end\n"
-                        "7. Output ONLY the blog post content - nothing else"
+                        "Create a COMPLETELY NEW 500-word blog post about the topic:\n\n"
+                        f"{getarticle_text}\n\n"
+                        "CRITICAL: Do NOT rewrite, paraphrase, or copy ANY sentences from the source.\n"
+                        "Write with completely different structure, examples, angles, and insights.\n"
+                        "This must be ORIGINAL content that stands alone - not a rewrite.\n\n"
+                        "Format: Start with # Title. Use ## headings. Include 2+ links. No follow-up questions."
                     )
-                }]
+                }],
+                timeout=60
             )
 
             content = response.choices[0].message.content.strip()
+            print(f"   ✓ Got response ({len(content)} chars)")
+            print(f"   📋 Raw content: {content[:200]}")  # Print first 200 chars to see what it is
             
             # Remove AI follow-up questions and meta-commentary
             lines = content.split('\n')
             filtered_lines = []
+            meta_keywords = [
+                "if you want", "do you want", "would you like", "let me know",
+                "should i", "can i also", "i can also", "hope this helps",
+                "feel free to", "contact me", "reach out", "want me to",
+                "shall i", "need me to", "would you like me", "would you prefer",
+                "another version", "different approach", "alternative", "more seo",
+                "meta description", "keywords", "punchy heading", "rank on google",
+                "do you need", "need anything else", "anything else", "further",
+                "follow up"
+            ]
+            
             for line in lines:
+                lower_line = line.lower().strip()
                 # Skip lines that are follow-up questions or meta-commentary
-                if any(phrase in line.lower() for phrase in [
-                    "if you want", "do you want", "would you like", "let me know",
-                    "should i", "can i also", "i can also", "hope this helps",
-                    "feel free to", "contact me", "reach out"
-                ]):
-                    break  # Stop processing at first meta-commentary
+                if any(phrase in lower_line for phrase in meta_keywords) or lower_line.endswith("?"):
+                    # If line is just a question mark or looks like meta, skip rest
+                    if lower_line.startswith("if ") or lower_line.startswith("would ") or lower_line.endswith("?"):
+                        break
                 filtered_lines.append(line)
             
             content = '\n'.join(filtered_lines).strip()
-            if content and len(content.split()) > 100:
+            word_count = len(content.split())
+            print(f"   ✓ After filtering: {word_count} words")
+            
+            if content and word_count > 100:
                 return content
+            else:
+                print(f"   ⚠️ Content too short or empty after filtering")
 
         except Exception as e:
-            print(f"⚠️ Attempt {attempt+1} failed: {e}")
+            print(f"   ❌ Attempt {attempt+1} error: {type(e).__name__}: {str(e)[:100]}")
+            import traceback
+            traceback.print_exc()
     
     print("⚠️ All attempts to generate article failed.")
     return None
