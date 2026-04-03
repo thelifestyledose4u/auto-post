@@ -299,13 +299,34 @@ def generate_article(getarticle_text, max_retries=3):
                     "content": (
                         "You are a professional blog writer.\n\n"
                         f"Here is some source text:\n\n{getarticle_text}\n\n"
-                        "Write a **500-word original blog post** with <h2>/<h3> headings, <p> paragraphs, lists where needed, "
-                        "2+ authoritative outbound links, American English, active voice, catchy title, and strong call-to-action."
+                        "Write ONLY a 500-word original blog post. Requirements:\n"
+                        "1. Start with a compelling title on the first line: # [Title]\n"
+                        "2. Include ## and ### subheadings, paragraphs, and bullet lists\n"
+                        "3. Add 2+ authoritative outbound links\n"
+                        "4. Use American English, active voice, strong call-to-action\n"
+                        "5. Start immediately with # - NO preamble or explanation\n"
+                        "6. NEVER include follow-up questions, meta-commentary, or offers at the end\n"
+                        "7. Output ONLY the blog post content - nothing else"
                     )
                 }]
             )
 
             content = response.choices[0].message.content.strip()
+            
+            # Remove AI follow-up questions and meta-commentary
+            lines = content.split('\n')
+            filtered_lines = []
+            for line in lines:
+                # Skip lines that are follow-up questions or meta-commentary
+                if any(phrase in line.lower() for phrase in [
+                    "if you want", "do you want", "would you like", "let me know",
+                    "should i", "can i also", "i can also", "hope this helps",
+                    "feel free to", "contact me", "reach out"
+                ]):
+                    break  # Stop processing at first meta-commentary
+                filtered_lines.append(line)
+            
+            content = '\n'.join(filtered_lines).strip()
             if content and len(content.split()) > 100:
                 return content
 
